@@ -1,6 +1,8 @@
+#include "HardwareSerial.h"
 #include "configLora.h"
 #include "pins.h"
 
+void serialConfigReturnAct(byte);
 void loraConfigWriteReg(unsigned int, unsigned int, byte*);
 void loraConfigMode();
 void loraWorkMode();
@@ -8,45 +10,13 @@ void loraLowpowerMode();
 byte* mergeByteArrays(byte*, unsigned int, byte*, unsigned int);
 void serialBufClear();
 
-void serialConfigReturnAct(byte configReturn) {
-  pinMode(PINLED, OUTPUT);
-  if (configReturn == 0x80) {
-    // Config success
-    // Do nothing
-    return;
-  } else if (configReturn == 0xA0) {
-    // Config fail
-    // LED --__--__
-    while(true) {
-      digitalWrite(PINLED, HIGH);
-      delay(500);
-      digitalWrite(PINLED, LOW);
-      delay(500);
-    }
-  } else {
-    // Unknown return value
-    // probably Lora module not connected
-    // LED -_-__-_-__
-    while(true) {
-      digitalWrite(PINLED, HIGH);
-      delay(200);
-      digitalWrite(PINLED, LOW);
-      delay(200);
-      digitalWrite(PINLED, HIGH);
-      delay(200);
-      digitalWrite(PINLED, LOW);
-      delay(400);
-    }
-  }
-}
-
 void loraConfig() {
   /*
   A function simply to make the setup() function prettier
   Note that this function lets lora enter work mode automatically
   Configs Lora as follows:
     Baud Rate: 9600 bps
-    Serial Arguments:
+    LoraSerial Arguments:
       Data Bits: 8
       Stop Bits: 1
       Correction Bits: NONE
@@ -63,38 +33,54 @@ void loraConfig() {
   // Lora enter config mode
   loraConfigMode();
   // Baud Rate
-  byte bufBaudRate[4] = {0x00, 0x00, 0x25, 0x80};
+  const byte bufBaudRate[4] = {0x00, 0x00, 0x25, 0x80};
   loraConfigWriteReg(0x04, 4, bufBaudRate);
-  // Serial Arguments
+  // LoraSerial Arguments
   /* bit5[stopBits = 1 (0b0)],
      bit4[frameLen = dataBits + correctionBits = 8 (0b0)],
      bit(2,1)[correctionBits = NONE (0b00)]
   therefore data = 0b000000 */
-  byte bufSerialArgs[1] = {0x00};
-  loraConfigWriteReg(0x05, 1, bufSerialArgs);
+  const byte bufLoraSerialArgs[1] = {0x00};
+  loraConfigWriteReg(0x05, 1, bufLoraSerialArgs);
   // Transmission Arguments
   /* bit(11,5)[channel = 20 (0b0010100)],
      bit(4,3)[power = 21dBm (0b11)],
      bit(2,0)[airSpeed = 4.8K (0b010)]
   therefore data = 0b001010011010 */
-  byte bufTransArgs[2] = {0b0010, 0b10011010};
+  const byte bufTransArgs[2] = {0b0010, 0b10011010};
   loraConfigWriteReg(0x06, 2, bufTransArgs);
   // Transmission Mode
   /* 0x02 fix-point */
-  byte bufTransMode[2] = {0x00, 0x02};
+  const byte bufTransMode[2] = {0x00, 0x02};
   loraConfigWriteReg(0x07, 2, bufTransMode);
   // Pack Size
-  byte bufPackSize[1] = {20};
+  const byte bufPackSize[1] = {20};
   loraConfigWriteReg(0x0E, 1, bufPackSize);
   // Sleep Time
-  byte bufSleepTime[1] = {0};
+  const byte bufSleepTime[1] = {0};
   loraConfigWriteReg(0x14, 1, bufSleepTime);
   // Local Addr
-  byte bufLocalAddr[1] = {20};
+  const byte bufLocalAddr[1] = {20};
   loraConfigWriteReg(0x19, 1, bufLocalAddr);
 
   // Lora enter work mode
   loraWorkMode();
+}
+
+void serialConfigReturnAct(byte configReturn, int regAddr) {
+  pinMode(PINLED, OUTPUT);
+  if (configReturn == 0x80) {
+    // Config success
+    return;
+  } else {
+    // Unknown return value
+    // probably Lora module not connected
+	DebugSerial.print("ERROR: return: ");
+	DebugSerial.print(configReturn);
+	DebugSerial.print(", addr: ");
+	DebugSerial.print(regAddr);
+	DebugSerial.print('\n');
+  }
 }
 
 void loraConfigWriteReg(unsigned int regAddr, unsigned int regLen, byte data[]) {
@@ -109,12 +95,12 @@ void loraConfigWriteReg(unsigned int regAddr, unsigned int regLen, byte data[]) 
     => 0b100 00000 + 0x07 + 0x01 + 0x0002
     => 0x80, 0x07, 0x02, {0x00, 0x02}
   */
-  byte prefix[] = {0x80, regAddr, regLen};
-  byte *buf = mergeByteArrays(prefix, 3, data, regLen);
-  Serial.write(buf, 3 + regLen);
+  const byte prefix[] = {0x80, regAddr, regLen};
+  const byte *buf = mergeByteArrays(prefix, 3, data, regLen);
+  LoraSerial.write(buf, 3 + regLen);
   free(buf);
   // I only read the first byte here, but should be enough to judge an error
-  serialConfigReturnAct(Serial.read());
+  serialConfigReturnAct(LoraSerial.read(), regAddr);
   serialBufClear();
 }
 
@@ -146,7 +132,7 @@ void loraLowpowerMode() {
 }
 
 void serialBufClear() {
-  // Serial.read() clears one byte, returns -1 if buf clear
+  // LoraSerial.read() clears one byte, returns -1 if buf clear
   // Seems to be a hack but seems to be no better way
-  while (Serial.read() >= 0) {}
+  while (LoraSerial.read() >= 0) {}
 }

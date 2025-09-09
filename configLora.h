@@ -1,5 +1,5 @@
-#ifndef MAIN_H
-#define MAIN_H
+#ifndef CONFIG_LORA_H
+#define CONFIG_LORA_H
 #include <Arduino.h>
 #include "pins.h"
 
@@ -15,7 +15,6 @@ So I won't be really surprised if one day, after adding a bunch of functionaliti
 we'll have to delete this due to waste of memory and storage.
 */
 
-void serialConfigReturnAct(byte);
 void loraConfig();
 
 #endif

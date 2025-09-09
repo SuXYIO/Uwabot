@@ -27,9 +27,10 @@ The concept is having pairs of `foo.cpp` and `foo.h`, providing functions to cal
 - Bot motion control
   - [ ] Implement motion control for bot
 - `Lora` module **\***
-  - [x] Implement init for `Lora`
+  - [ ] Implement init for `Lora`
   - [ ] Implement communication test for `Lora`
   - [ ] Implement `Lora` remote controller
+  - [ ] Optimize init for `Lora` to use less memory and storage
 - Automation **\***
   - [ ] Implement automatic mode for bot
 

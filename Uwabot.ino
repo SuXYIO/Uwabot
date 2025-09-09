@@ -7,16 +7,15 @@ void setup() {
   pinMode(PINMD0, OUTPUT);
   pinMode(PINMD1, OUTPUT);
   pinMode(PINAUX, INPUT);
-  Serial.begin(9600, SERIAL_8N1);
+  LoraSerial.begin(9600);
 
   // Config Lora
   loraConfig();
   // Lora enters work mode automatically in loraConfig()
 
   // Use LED to indicate success
+  DebugSerial.println("INFO: Lora module setup complete");
   digitalWrite(PINLED, HIGH);
-  delay(500);
-  digitalWrite(PINLED, LOW);
 }
 
 void loop() {
