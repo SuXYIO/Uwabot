@@ -17,10 +17,5 @@ we'll have to delete this due to waste of memory and storage.
 
 void serialConfigReturnAct(byte);
 void loraConfig();
-void loraConfigSetSingleRegister(unsigned int, unsigned int);
-void loraConfigMode();
-void loraWorkMode();
-void loraLowpowerMode();
-void serialBufClear();
 
 #endif
