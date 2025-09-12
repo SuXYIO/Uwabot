@@ -1,8 +1,7 @@
-#include "HardwareSerial.h"
 #include "configLora.h"
 #include "pins.h"
 
-void serialConfigReturnAct(byte);
+void serialConfigReturnAct(int);
 void loraConfigWriteReg(unsigned int, unsigned int, byte*);
 void loraConfigMode();
 void loraWorkMode();
@@ -67,19 +66,27 @@ void loraConfig() {
   loraWorkMode();
 }
 
-void serialConfigReturnAct(byte configReturn, int regAddr) {
-  pinMode(PINLED, OUTPUT);
+void serialConfigReturnAct(int regAddr) {
+  byte configReturn = LoraSerial.read();
   if (configReturn == 0x80) {
     // Config success
+    serialBufClear();
     return;
   } else {
     // Unknown return value
     // probably Lora module not connected
-	DebugSerial.print("ERROR: return: ");
-	DebugSerial.print(configReturn);
-	DebugSerial.print(", addr: ");
-	DebugSerial.print(regAddr);
-	DebugSerial.print('\n');
+    DebugSerial.print("ERROR: return: ");
+    while (configReturn != -1) {
+      DebugSerial.print(configReturn);
+      configReturn = LoraSerial.read();
+	  if (configReturn != -1)
+		  DebugSerial.print(", ");
+    }
+    LoraSerial.print("\n");
+    DebugSerial.print("addr: ");
+    DebugSerial.print(regAddr);
+    DebugSerial.print('\n');
+	while (true) {}
   }
 }
 
@@ -100,20 +107,19 @@ void loraConfigWriteReg(unsigned int regAddr, unsigned int regLen, byte data[]) 
   LoraSerial.write(buf, 3 + regLen);
   free(buf);
   // I only read the first byte here, but should be enough to judge an error
-  serialConfigReturnAct(LoraSerial.read(), regAddr);
-  serialBufClear();
+  serialConfigReturnAct(regAddr);
 }
 
 byte* mergeByteArrays(byte arr1[], unsigned int l1, byte arr2[], unsigned int l2) {
-	// remember to free() it yourself
-	byte *merged = (byte*)malloc((l1 + l2) * sizeof(byte));
+  // remember to free() it yourself
+  byte *merged = (byte*)malloc((l1 + l2) * sizeof(byte));
 
-	for (int i=0; i < l1; i++)
-		merged[i] = arr1[i];
-	for (int i=0; i < l2; i++)
-		merged[l1 + i] = arr2[i];
+  for (int i=0; i < l1; i++)
+    merged[i] = arr1[i];
+  for (int i=0; i < l2; i++)
+    merged[l1 + i] = arr2[i];
 
-	return merged;
+  return merged;
 }
 
 void loraConfigMode() {

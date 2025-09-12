@@ -1,7 +1,6 @@
-#ifndef CONFIG_LORA_H
-#define CONFIG_LORA_H
-#include <Arduino.h>
+#pragma once
 #include "pins.h"
+#include <Arduino.h>
 
 /*
 Functions for configuring Lora module
@@ -13,8 +12,8 @@ Dunno if the exchange in time and performance (size of binary code) is sensible,
 I'm new to embedded systems after all.
 So I won't be really surprised if one day, after adding a bunch of functionalities,
 we'll have to delete this due to waste of memory and storage.
+
+All code here is oriented for A39C-T400A22D1a lora module
 */
 
 void loraConfig();
-
-#endif

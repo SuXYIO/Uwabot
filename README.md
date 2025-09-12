@@ -14,11 +14,12 @@ For the underwater team of _Affiliated High School of Peking University (BDFZ)_.
 
 ## File Structure
 
-| File                              | Functionality                                                      |
-| --------------------------------- | ------------------------------------------------------------------ |
-| `Uwabot.ino`                      | The main file for arduino, acts like `main()` function             |
-| `pins.h`                          | Define macro of pin numbers, to avoid _Magic Numbers_ in code      |
-| `configLora.cpp` & `configLora.h` | Contains the functions for configuring _Lora_ communication module |
+| File                              | Functionality                                                              |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| `Uwabot.ino`                      | The main file for arduino, acts like `main()` function                     |
+| `pins.h`                          | Define macro of pin numbers, to avoid _Magic Numbers_ in code              |
+| `serialDef.cpp`                   | Intialize the self defined `Serial`s, avoid multi instances and weird bugs |
+| `configLora.cpp` & `configLora.h` | Contains the functions for configuring _Lora_ communication module         |
 
 The concept is having pairs of `foo.cpp` and `foo.h`, providing functions to call and a _header_ to `#include`.
 

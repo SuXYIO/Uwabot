@@ -1,5 +1,4 @@
-#ifndef PINS_H
-#define PINS_H
+#pragma once
 
 #define PINMD0 2
 #define PINMD1 3
@@ -14,7 +13,5 @@
 #define PINLED 13
 
 #include <SoftwareSerial.h>
-const SoftwareSerial LoraSerial(PINLORARX, PINLORATX);
-const SoftwareSerial DebugSerial(PINRX, PINTX);
-
-#endif
+extern SoftwareSerial LoraSerial;
+extern SoftwareSerial DebugSerial;

@@ -1,6 +1,9 @@
 #include "configLora.h"
 #include "pins.h"
 
+extern SoftwareSerial LoraSerial;
+extern SoftwareSerial DebugSerial;
+
 void setup() {
   // Init Lora
   // Setup
@@ -8,6 +11,7 @@ void setup() {
   pinMode(PINMD1, OUTPUT);
   pinMode(PINAUX, INPUT);
   LoraSerial.begin(9600);
+  DebugSerial.begin(9600);
 
   // Config Lora
   loraConfig();
