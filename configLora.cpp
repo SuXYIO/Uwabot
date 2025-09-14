@@ -46,7 +46,10 @@ void loraConfig() {
      bit(4,3)[power = 21dBm (0b11)],
      bit(2,0)[airSpeed = 4.8K (0b010)]
   therefore data = 0b001010011010 */
-  const byte bufTransArgs[2] = {0b0010, 0b10011010};
+  const byte channel = LORA_CHANNEL;
+  const byte b1 = channel >> 3;
+  const byte b2 = channel << 5 + 0b11010;
+  const byte bufTransArgs[2] = {b1, b2};
   loraConfigWriteReg(0x06, 2, bufTransArgs);
   // Transmission Mode
   /* 0x02 fix-point */
@@ -59,7 +62,7 @@ void loraConfig() {
   const byte bufSleepTime[1] = {0};
   loraConfigWriteReg(0x14, 1, bufSleepTime);
   // Local Addr
-  const byte bufLocalAddr[1] = {20};
+  const byte bufLocalAddr[1] = {LORA_ADDR};
   loraConfigWriteReg(0x19, 1, bufLocalAddr);
 
   // Lora enter work mode

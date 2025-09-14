@@ -16,4 +16,7 @@ we'll have to delete this due to waste of memory and storage.
 All code here is oriented for A39C-T400A22D1a lora module
 */
 
+#define LORA_CHANNEL = 20;
+#define LORA_ADDR = 25;
+
 void loraConfig();
