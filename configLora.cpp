@@ -1,18 +1,16 @@
 #include "configLora.h"
-#include "pins.h"
 
-void serialConfigReturnAct(int);
-void loraConfigWriteReg(unsigned int, unsigned int, byte*);
+void loraSerialBufClear();
+void loraSerialBufClearPrt();
+void critErrorAct();
+void loraTryHandshake();
+void loraReset();
 void loraConfigMode();
-void loraWorkMode();
-void loraLowpowerMode();
-byte* mergeByteArrays(byte*, unsigned int, byte*, unsigned int);
-void serialBufClear();
 
 void loraConfig() {
   /*
   A function simply to make the setup() function prettier
-  Note that this function lets lora enter work mode automatically
+  
   Configs Lora as follows:
     Baud Rate: 9600 bps
     LoraSerial Arguments:
@@ -20,128 +18,172 @@ void loraConfig() {
       Stop Bits: 1
       Correction Bits: NONE
     Transmission Arguments:
-      Channel: 20
+      Channel: 25
       Transmission Power: 22dBm
       On Air Speed Rate: 4.8K
     Transmission Mode: Fix-point
     Pack Size: 20
     Sleep Time: 0
-    Local Addr: 20
+    Local Group: 25
+    Local Addr: 25
+    Targ Group: 25
+    Targ Addr: 26
   */
 
   // Lora enter config mode
   loraConfigMode();
-  // Baud Rate
-  const byte bufBaudRate[4] = {0x00, 0x00, 0x25, 0x80};
-  loraConfigWriteReg(0x04, 4, bufBaudRate);
-  // LoraSerial Arguments
-  /* bit5[stopBits = 1 (0b0)],
-     bit4[frameLen = dataBits + correctionBits = 8 (0b0)],
-     bit(2,1)[correctionBits = NONE (0b00)]
-  therefore data = 0b000000 */
-  const byte bufLoraSerialArgs[1] = {0x00};
-  loraConfigWriteReg(0x05, 1, bufLoraSerialArgs);
-  // Transmission Arguments
-  /* bit(11,5)[channel = 20 (0b0010100)],
-     bit(4,3)[power = 21dBm (0b11)],
-     bit(2,0)[airSpeed = 4.8K (0b010)]
-  therefore data = 0b001010011010 */
-  const byte channel = LORA_CHANNEL;
-  const byte b1 = channel >> 3;
-  const byte b2 = channel << 5 + 0b11010;
-  const byte bufTransArgs[2] = {b1, b2};
-  loraConfigWriteReg(0x06, 2, bufTransArgs);
-  // Transmission Mode
-  /* 0x02 fix-point */
-  const byte bufTransMode[2] = {0x00, 0x02};
-  loraConfigWriteReg(0x07, 2, bufTransMode);
-  // Pack Size
-  const byte bufPackSize[1] = {20};
-  loraConfigWriteReg(0x0E, 1, bufPackSize);
-  // Sleep Time
-  const byte bufSleepTime[1] = {0};
-  loraConfigWriteReg(0x14, 1, bufSleepTime);
-  // Local Addr
-  const byte bufLocalAddr[1] = {LORA_ADDR};
-  loraConfigWriteReg(0x19, 1, bufLocalAddr);
 
-  // Lora enter work mode
-  loraWorkMode();
-}
+  // Handshake
+  loraTryHandshake();
 
-void serialConfigReturnAct(int regAddr) {
-  byte configReturn = LoraSerial.read();
-  if (configReturn == 0x80) {
-    // Config success
-    serialBufClear();
-    return;
-  } else {
-    // Unknown return value
-    // probably Lora module not connected
-    DebugSerial.print("ERROR: return: ");
-    while (configReturn != -1) {
-      DebugSerial.print(configReturn);
-      configReturn = LoraSerial.read();
-	  if (configReturn != -1)
-		  DebugSerial.print(", ");
+  // Reset
+  loraReset();
+
+  // This code is really shitty,
+  // but yeah, run time efficiency is no.1 in embedded systems
+  // goddamn lora api, how much do you need to preserve?
+  const byte buf[] = {
+    0x80, 0x04, 0x1E, //cmd, 0x80 write local success, return if error
+    LORA_BAUDRATE,    //0x04
+    LORA_SERIALARGS,  //0x05
+    LORA_TRANSARGS,   //0x06
+    LORA_WORKMODE,    //0x07
+    0x00,0x00,0x00,   //0x08 to 0x09, preserved
+    0x00,             //0x0A, default, main or follow machine, 0 for main
+    0x77, 0x77, 0x77, 0x2E, 0x61, 0x73, 0x68, 0x69, 0x6E, 0x69, 0x6E, 0x67, 0x2E, 0x63, 0x6F, 0x6D, //0x0B, default, AES key
+    0x00,0x00,0x00,0x00,0x00,0x00, //0x0C to 0x0D, preserved
+    LORA_PACKSIZE,    //0x0E
+    0x00,0x00,0x00,0x00,0x00,0x00,0x00, //0x0F to 0x13, preserved
+    LORA_SLEEPTIME,   //0x14
+    0x00,0x00,        //0x15 to 0x16, preserved
+    0x00, 0x80,       //0x17, default, which is enable wireless wake code
+    LORA_LOCGROUP,    //0x18
+    LORA_LOCADDR,     //0x19
+    LORA_TARGADDR,    //0x1A
+    LORA_TARGADDR,    //0x1B
+    0x00,0x00,0x00,0x00,0x00,0x00 //0x1C to 0x21, related to relay mode
+  };
+  //ASDS transmission
+  //const byte buf[] = {0x80, 0x04, 0x1E, 0x00, 0x00, 0x25, 0x80, 0x00, 0x04, 0x1A, 0x00, 0x02, 0x05, 0x03, 0xE8, 0x00, 0x77, 0x77, 0x77, 0x2E, 0x61, 0x73, 0x68, 0x69, 0x6E, 0x69, 0x6E, 0x67, 0x2E, 0x63, 0x6F, 0x6D, 0x7C, 0x7C, 0x7C, 0x7C, 0x7C, 0x05, 0x20, 0x00, 0x23, 0x00, 0x00, 0x00, 0x3C, 0x3C, 0x00, 0x0A, 0x19, 0x00, 0x00, 0x25, 0x25, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x02};
+
+  LoraSerial.write(buf, 61);
+  DebugSerial.print("INFO: sending config cmd\n\tres: ");
+
+  int cnt = 0;
+  int correctcnt = 0;
+  while (true) {
+    if (LoraSerial.available() > 0) {
+      byte ret = LoraSerial.read();
+      DebugSerial.print(ret);
+      DebugSerial.print(", ");
+
+      if (correctcnt >= 3) {
+        break;
+      }
+      if (ret == buf[cnt]) {
+        correctcnt++;
+      } else {
+        // Unknown return value
+        DebugSerial.print("(wrong byte)");
+        critErrorAct();
+      }
+      cnt++;
     }
-    LoraSerial.print("\n");
-    DebugSerial.print("addr: ");
-    DebugSerial.print(regAddr);
-    DebugSerial.print('\n');
-	while (true) {}
   }
+  DebugSerial.println();
+  DebugSerial.println("INFO: lora config success");
+  loraSerialBufClear();
 }
 
-void loraConfigWriteReg(unsigned int regAddr, unsigned int regLen, byte data[]) {
-  /*
-  Write data to register one at a time
-  write, local
-  Enters serialConfigReturnAct() if error
+void loraTryHandshake() {
+  // return true for success, false for error
+  // but it'll show up in debug anyway
+  byte handshakemsg[] = {0, 0, 1};
+  int cnt = 0;
+  int correctcnt = 0;
 
-  Example: set Fix-point Transmission mode
-    => reg0x07 = 0x0002
-    => Cmd[(write + local + success) + preserved] + Reg[0x07] + Len[1] + [Data0x0002]
-    => 0b100 00000 + 0x07 + 0x01 + 0x0002
-    => 0x80, 0x07, 0x02, {0x00, 0x02}
-  */
-  const byte prefix[] = {0x80, regAddr, regLen};
-  const byte *buf = mergeByteArrays(prefix, 3, data, regLen);
-  LoraSerial.write(buf, 3 + regLen);
-  free(buf);
-  // I only read the first byte here, but should be enough to judge an error
-  serialConfigReturnAct(regAddr);
+  LoraSerial.write(handshakemsg, 3);
+  DebugSerial.print("INFO: sending handshake, note that the program will wait forever\n\tres: ");
+  while (true) {
+    if (LoraSerial.available() > 0) {
+      byte retbyte = LoraSerial.read();
+      DebugSerial.print(retbyte);
+      DebugSerial.print(", ");
+
+      if (correctcnt >= 3) {
+        break;
+      }
+      DebugSerial.print(retbyte);
+      if (retbyte == handshakemsg[cnt]) {
+        correctcnt++;
+      } else {
+        DebugSerial.print("(wrong byte)");
+        critErrorAct();
+      }
+      cnt++;
+    }
+  }
+  loraSerialBufClearPrt();
+  DebugSerial.println();
+  DebugSerial.println("INFO: handshake success");
 }
 
-byte* mergeByteArrays(byte arr1[], unsigned int l1, byte arr2[], unsigned int l2) {
-  // remember to free() it yourself
-  byte *merged = (byte*)malloc((l1 + l2) * sizeof(byte));
+void loraReset() {
+  byte resetmsg[] = {0x80, 0x23, 0x01};
+  byte expectret[] = {'O', 'K'};
+  LoraSerial.write(resetmsg, 3);
+  DebugSerial.print("INFO: sending reset cmd\n\tres: ");
 
-  for (int i=0; i < l1; i++)
-    merged[i] = arr1[i];
-  for (int i=0; i < l2; i++)
-    merged[l1 + i] = arr2[i];
+  int cnt = 0;
+  int correctcnt = 0;
+  while (true) {
+    if (LoraSerial.available() > 0) {
+      byte retbyte = LoraSerial.read();
+      DebugSerial.print(retbyte);
+      DebugSerial.print(", ");
 
-  return merged;
+      if (correctcnt >= 2) {
+        break;
+      }
+      if (retbyte == expectret[cnt]) {
+        correctcnt++;
+      } else {
+        DebugSerial.print("(wrong byte)");
+        //critErrorAct();
+      }
+      cnt++;
+    }
+  }
+  DebugSerial.println();
+  DebugSerial.println("INFO: reset success");
+  loraSerialBufClear();
 }
 
 void loraConfigMode() {
   digitalWrite(PINMD0, LOW);
   digitalWrite(PINMD1, LOW);
+  delay(120);
+  DebugSerial.println("INFO: lora entered config mode");
 }
 
 void loraWorkMode() {
   digitalWrite(PINMD0, HIGH);
   digitalWrite(PINMD1, LOW);
+  delay(120);
+  DebugSerial.println("INFO: lora entered work mode");
 }
 
-void loraLowpowerMode() {
-  digitalWrite(PINMD0, HIGH);
-  digitalWrite(PINMD1, HIGH);
-}
-
-void serialBufClear() {
-  // LoraSerial.read() clears one byte, returns -1 if buf clear
-  // Seems to be a hack but seems to be no better way
+void loraSerialBufClear() {
   while (LoraSerial.read() >= 0) {}
+}
+void loraSerialBufClearPrt() {
+  while (LoraSerial.available() > 0) {
+    DebugSerial.print((char)LoraSerial.read());
+  }
+}
+
+void critErrorAct() {
+  DebugSerial.println();
+  DebugSerial.println("ERROR: met CRITICAL ERROR, entered loop");
+  while (true) { delay(1000); }
 }
